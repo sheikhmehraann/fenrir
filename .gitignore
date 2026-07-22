@@ -1,0 +1,19 @@
+# Build outputs & temporary files
+*.patched
+*.tmp
+*.bin.bak
+*.raw
+*.log
+
+# Python cache & compiled files
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE & Editor folders
+.vscode/
+.idea/
+*.swp
+
+# Toolchain downloads
+arm-gnu-toolchain-*/
