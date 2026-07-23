@@ -91,8 +91,6 @@ Or run the automated flasher script:
 python flash.py
 ```
 
-> [!NOTE]
-> If Fastboot mode is not available on your device, you may need to use SP Flash Tool or MTK Client to flash the output image.
 
 ---
 
