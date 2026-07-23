@@ -1,8 +1,9 @@
-# 🐺 Fenrir — Bootchain Security Exploit & Framework
+# 🐺 Fenrir
+
+An LK patcher to bypass secure boot checks and force boot state to green on Dimensity devices.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-brightgreen.svg)](https://www.python.org/)
-[![Target: MTK ARM64](https://img.shields.io/badge/Architecture-ARM64%20(MediaTek%20Dimensity)-orange.svg)](https://www.mediatek.com/)
 
 This is a PoC exploit for a vulnerability in the MediaTek Dimensity secure boot chain (`bl2_ext` EL3 takeover).
 
@@ -28,12 +29,12 @@ By patching `bl2_ext` to skip verification, the entire chain of trust collapses.
 
 ```mermaid
 graph TD
-    A["BootROM (MediaTek SoC)"] --> B[Preloader]
-    B -. Skips Cryptographic Verification .-> C["bl2_ext (Patched EL3 Runtime)"]
-    C --> D["TEE / TrustZone"]
-    C --> E["GenieZone (GZ)"]
-    C --> F["Little Kernel (LK Bootloader)"]
-    F --> G["Linux Kernel (EL1 - Android 15 / XOS 15)"]
+    A[BootROM] --> B[Preloader]
+    B -. Unverified .-> C[bl2_ext]
+    C --> D[TEE]
+    C --> E[GenieZone]
+    C --> F[LK]
+    F --> G[Linux Kernel]
     
     style C fill:#d9534f,stroke:#c9302c,stroke-width:2px,color:#fff
     style F fill:#f0ad4e,stroke:#ec971f,stroke-width:2px,color:#fff
@@ -55,7 +56,7 @@ The injector is built on top of `liblk`, install it first:
 pip install -r requirements.txt
 ```
 
-Place your stock bootloader image in the `bin/` directory with your device codename (e.g., `bin/x6861.bin` or `bin/x6871.bin`).
+Place your stock bootloader image in the `bin/` directory with your device codename (e.g., `bin/pacman.bin`, `bin/x6861.bin`, `bin/x6871.bin`).
 
 ### 2. Building the Exploit
 Once you have your bootloader image ready, you can build the exploit using the build script:
@@ -149,9 +150,3 @@ Adding support for a new device is possible by examining an `expdb` dump and loo
 ## 📄 License
 
 This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
-
-Key points to be aware of:
-- You are free to use, modify, and distribute the software.
-- If you modify and use the software publicly, you must release your source code.
-- You must retain the same license (AGPL-3.0) when redistributing modified versions.
-- For full details, please refer to the [LICENSE](LICENSE) file.
