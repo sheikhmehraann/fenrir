@@ -142,6 +142,7 @@ Adding support for a new device is possible by examining an `expdb` dump and loo
 
 - **[@R0rt1z2](https://github.com/R0rt1z2)** — Original Fenrir exploit framework & `liblk` library.
 - **[@sheikhmehraann](https://github.com/sheikhmehraann)** — Infinix GT 20 Pro (`X6871`) & Infinix ZERO 40 5G (`X6861`) porting, forensic verification, and releases.
+- **[@ramabondanp](https://github.com/ramabondanp)** — Recovery packaging, testing, and distribution.
 
 ---
 
