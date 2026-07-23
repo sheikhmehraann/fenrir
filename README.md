@@ -140,15 +140,8 @@ Adding support for a new device is possible by examining an `expdb` dump and loo
 
 ## 👥 Credits & Core Team
 
-- **[@sheikhmehraann](https://github.com/sheikhmehraann)** — **Project Owner & Lead Developer**
-  - Architecture porting, forensic verification, and exploit integration for Infinix GT 20 Pro (`X6871`) & Infinix ZERO 40 5G (`X6861`).
-  - Binary disassembly, EL3 memory layout forensics, and 7-stage surgical patch engineering.
-  - Windows 1-click flasher tooling, multi-device build pipeline maintainer, and framework releases.
-
-- **[@ramabondanp](https://github.com/ramabondanp)** — **Co-Lead Developer & Integration Specialist**
-  - Key technical guidance, bootchain verification, and hardware testing.
-  - OrangeFox R12.0 & TWRP recovery packaging, dual-slot installer ZIP engineering, and custom ROM distribution.
-
+- **[@sheikhmehraann](https://github.com/sheikhmehraann)** — Lead Developer & Maintainer (Infinix GT 20 Pro `X6871` & ZERO 40 5G `X6861` ports, binary forensics, tooling).
+- **[@ramabondanp](https://github.com/ramabondanp)** — Co-Lead Developer (Technical guidance, testing, OrangeFox recovery packaging & ROM distribution).
 - **[@R0rt1z2](https://github.com/R0rt1z2)** — Original Fenrir exploit framework author & `liblk` library creator.
 
 ---
