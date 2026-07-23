@@ -1,61 +1,83 @@
-# Fenrir
-
-An LK patcher to bypass secure boot checks, spoof lock state, and force boot state to green on MediaTek Dimensity devices.
+# 🐺 Fenrir — Bootchain Security Exploit & Framework
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-brightgreen.svg)](https://www.python.org/)
+[![Target: MTK ARM64](https://img.shields.io/badge/Architecture-ARM64%20(MediaTek%20Dimensity)-orange.svg)](https://www.mediatek.com/)
+
+This is a PoC exploit for a vulnerability in the MediaTek Dimensity secure boot chain (`bl2_ext` EL3 takeover).
+
+It abuses a logic flaw where MediaTek Preloader skips cryptographic verification of `bl2_ext` if the `seccfg` unlock state is set to unlocked.
+
+The exploit achieves code execution at **EL3** and breaks the secure boot chain after Preloader execution.
+
+> [!CAUTION]
+> **I AM NOT RESPONSIBLE FOR BRICKED DEVICES.** This exploit can permanently destroy your phone if something goes wrong.
 
 ---
 
-## 📱 Supported Devices
+## 📖 Explanation
 
-| Device | Codename | Platform | Tested |
-| :--- | :---: | :---: | :---: |
-| **Infinix GT 20 Pro** | `X6871` | Dimensity 8200 (`mt6895`) | Yes 🟢 |
-| **Infinix ZERO 40 5G** | `X6861` | Dimensity 8200 (`mt6878`) | Yes 🟢 |
-| Nothing Phone (2a) | `Pacman` | Dimensity 7200 Ultra | Yes 🟢 |
-| Nothing Phone (2a) Plus | `PacmanPro` | Dimensity 7350 Pro | Yes 🟢 |
-| CMF Phone 1 | `Tetris` | Dimensity 7300 | Yes 🟢 |
-| Tecno Pova 4 | `LG7n` | Helio G99 | Yes 🟢 |
-| Tecno Pova 4 Pro | `LG8n` | Helio G99 | Yes 🟢 |
-| Tecno Pova 5 | `LH7n` | Helio G99 | Yes 🟢 |
-| itel RS4 | `S666LN` | Helio G99 | Yes 🟢 |
-| Redmi K70E / POCO X6 Pro 5G | `duchamp` | Dimensity 8300 Ultra | Yes 🟢 |
-| Redmi Turbo 4 / POCO X7 Pro | `rodin` | Dimensity 8400 | Yes 🟢 |
-| Redmi Note 11T Pro / POCO X4 GT | `xaga` | Dimensity 8100 | Yes 🟢 |
-| Xiaomi 12T | `plato` | Dimensity 8100 Ultra | Yes 🟢 |
-| Lenovo IdeaTab Pro 12.7 | `peridotl` | Dimensity 8300 | Yes 🟢 |
-| Zinwa Q25 | `Q25` | Dimensity Platform | Yes 🟢 |
+This exploit abuses a flaw in the MediaTek boot chain. When the bootloader is unlocked (`seccfg`), the Preloader skips verification of the `bl2_ext` partition, even though `bl2_ext` is responsible for verifying everything that comes after it.
+
+### The issue is critical because:
+1. **Preloader jumps directly into `bl2_ext` while still running at EL3** (highest privilege level in ARM64 Exception Levels).
+2. **`bl2_ext` controls the transition to EL1** and the non-secure world.
+3. **An unverified `bl2_ext` can load any subsequent images without checks.**
+
+By patching `bl2_ext` to skip verification, the entire chain of trust collapses.
+
+```mermaid
+graph TD
+    A["BootROM (MediaTek SoC)"] --> B[Preloader]
+    B -. Skips Cryptographic Verification .-> C["bl2_ext (Patched EL3 Runtime)"]
+    C --> D["TEE / TrustZone"]
+    C --> E["GenieZone (GZ)"]
+    C --> F["Little Kernel (LK Bootloader)"]
+    F --> G["Linux Kernel (EL1 - Android 15 / XOS 15)"]
+    
+    style C fill:#d9534f,stroke:#c9302c,stroke-width:2px,color:#fff
+    style F fill:#f0ad4e,stroke:#ec971f,stroke-width:2px,color:#fff
+    style G fill:#5cb85c,stroke:#4cae4c,stroke-width:2px,color:#fff
+```
+
+The actual exploit patches `sec_get_vfy_policy()` to always return 0, so an unverified `bl2_ext` running at EL3 happily loads unverified images for the rest of the boot chain.
+
+In addition to patching `sec_get_vfy_policy()`, the PoC also spoofs `ro.boot.verifiedbootstate` to **`green`** and the device's lock state to `LKS_LOCK` (`ro.boot.flash.locked = 1`) so you can pass **Strong Play Integrity** checks anywhere while being unlocked.
 
 ---
 
-## 🛠️ Usage
+## 🚀 Usage
 
-### Prerequisites
-Install the required dependencies:
+### 1. Prerequisites & Dependencies
+The injector is built on top of `liblk`, install it first:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### Build
-To generate the patched LK image for your target device:
+Place your stock bootloader image in the `bin/` directory with your device codename (e.g., `bin/x6861.bin` or `bin/x6871.bin`).
 
-#### On Linux / macOS:
+### 2. Building the Exploit
+Once you have your bootloader image ready, you can build the exploit using the build script:
+
+#### Linux / macOS:
 ```bash
-./build.sh <codename>
+# Using default bootloader location (bin/[device].bin)
+./build.sh X6861
+
+# Using custom bootloader path
+./build.sh X6861 /path/to/your/bootloader.bin
 ```
 
-#### On Windows:
+#### Windows:
 ```cmd
-python build.py <codename>
+python build.py X6861
 ```
 
-*(For example, `python build.py X6861` or `python build.py X6871`).*
+After building, you will see a new file named `lk.patched` in the root directory.
 
-The patched bootloader image will be saved as `lk.patched` in the root directory.
-
-### Flash
-Flash the generated image to both slots via Fastboot:
+### 3. Flashing
+Flash the patched bootloader image to both slots on your device:
 
 ```bash
 fastboot flash lk_a lk.patched
@@ -63,23 +85,73 @@ fastboot flash lk_b lk.patched
 fastboot reboot
 ```
 
-Alternatively, use the automated flashing script:
+Or run the automated flasher script:
 ```bash
 python flash.py
 ```
 
----
-
-## 🔍 How It Works
-
-Fenrir exploits a structural logic vulnerability in MediaTek bootloader implementations. When a device's security configuration (`seccfg`) is unlocked, the MediaTek Preloader skips cryptographic verification of the `bl2_ext` partition.
-
-Because `bl2_ext` executes directly at **EL3** (the highest ARM64 Exception Level), patching `bl2_ext` allows complete takeover of subsequent boot stages (`TEE`, `GenieZone`, `LK`, `Linux Kernel`).
-
-Fenrir applies surgical instruction replacements to disable AVB verification policy checks (`sec_get_vfy_policy`), spoof `ro.boot.verifiedbootstate` to **`green`**, and force `ro.boot.flash.locked = 1` (`LKS_LOCK`) to pass Play Store Integrity & SafetyNet checks natively.
+> [!NOTE]
+> If Fastboot mode is not available on your device, you may need to use SP Flash Tool or MTK Client to flash the output image.
 
 ---
 
-## 📜 License
+## 📱 Supported Devices Status
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See the [LICENSE](LICENSE) file for details.
+The following devices are currently supported and tested:
+
+| Device | Codename | Platform | Status |
+| :--- | :---: | :---: | :---: |
+| **Infinix GT 20 Pro** | **`X6871`** | **Dimensity 8200 (`mt6895`)** | **Supported 🟢** |
+| **Infinix ZERO 40 5G** | **`X6861`** | **Dimensity 8200 (`mt6878`)** | **Supported 🟢** |
+| Nothing Phone (2a) | `Pacman` | Dimensity 7200 Ultra | Supported 🟢 |
+| Nothing Phone (2a) Plus | `PacmanPro` | Dimensity 7350 Pro | Supported 🟢 |
+| CMF Phone 1 | `Tetris` | Dimensity 7300 | Supported 🟢 |
+| Tecno Pova 4 | `LG7n` | Helio G99 | Supported 🟢 |
+| Tecno Pova 4 Pro | `LG8n` | Helio G99 | Supported 🟢 |
+| Tecno Pova 5 | `LH7n` | Helio G99 | Supported 🟢 |
+| itel RS4 | `S666LN` | Helio G99 | Supported 🟢 |
+| Redmi K70E / POCO X6 Pro 5G | `duchamp` | Dimensity 8300 Ultra | Supported 🟢 |
+| Redmi Turbo 4 / POCO X7 Pro | `rodin` | Dimensity 8400 | Supported 🟢 |
+| Redmi Turbo 5 Max / POCO X8 Pro Max | `dash` | Dimensity Platform | Supported 🟢 |
+| Redmi Note 11T Pro / POCO X4 GT | `xaga` | Dimensity 8100 | Supported 🟢 |
+| Xiaomi 12T | `plato` | Dimensity 8100 Ultra | Supported 🟢 |
+| Lenovo IdeaTab Pro / Xiaoxin Pad Pro 12.7 | `peridotl` | Dimensity 8300 | Supported 🟢 |
+| Zinwa Q25 | `Q25` | Dimensity Platform | Supported 🟢 |
+
+---
+
+## 📌 Finding Verification in `expdb`
+
+Adding support for a new device is possible by examining an `expdb` dump and looking for the `img_auth_required` flag when the partition is being loaded:
+
+```text
+[PART] img_auth_required = 0
+[PART] Image with header, name: bl2_ext, addr: FFFFFFFFh, mode: FFFFFFFFh, size:654944, magic:58881688h
+[PART] part: lk_a img: bl2_ext cert vfy(0 ms)
+```
+
+---
+
+## 📝 TODO
+- [ ] Add proper porting guide for new devices
+- [ ] Fix MMU crashes when modifying memory at runtime
+- [ ] Figure out proper payload appending method
+
+---
+
+## 👥 Credits & References
+
+- **[@R0rt1z2](https://github.com/R0rt1z2)** — Original Fenrir exploit framework & `liblk` library.
+- **[@sheikhmehraann](https://github.com/sheikhmehraann)** — Infinix GT 20 Pro (`X6871`) & Infinix ZERO 40 5G (`X6861`) porting, forensic verification, and releases.
+
+---
+
+## 📄 License
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+Key points to be aware of:
+- You are free to use, modify, and distribute the software.
+- If you modify and use the software publicly, you must release your source code.
+- You must retain the same license (AGPL-3.0) when redistributing modified versions.
+- For full details, please refer to the [LICENSE](LICENSE) file.
